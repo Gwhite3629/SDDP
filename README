@@ -1,0 +1,373 @@
+                       SECURE DATA DELIVERY PROTOCOL
+
+
+                             TABLE OF CONTENTS
+
+1. INTRODUCTION
+
+    1.1 Motivation
+    1.2 Interface
+    1.3 Operation
+
+2. PHILOSOPHY
+
+    2.1 Model of operation
+    2.2 Sender
+    2.3 Receiver
+    2.4 Interface
+    2.5 Security
+    2.6 Trust
+    2.7 Speed
+    2.8 Simplicity
+
+3. FUNCTIONAL SPECIFICATION
+
+    3.1 Header Format
+    3.2 Special Headers
+        3.2.1 Request for send
+        3.2.2 Confirmation
+        3.2.3 Request for lost
+        3.2.4 Done transmitting
+    3.3 Connecting
+    3.4 Rejection
+    3.5 Blocking
+    3.6 Trust factors
+    3.7 Getting lost packets
+    3.8 File construction
+
+4. A BASIC IMPLEMENTATION
+
+
+                              1. INTRODUCTION
+
+The Secure Data Delivery Protocol (SDDP) is to be used as a system to quickly
+and securely send data to known and trusted computers. SDDP is connection
+oriented and highly trust based.
+
+1.1. Motivation
+
+    The primary purpose of SDDP is to quickly send data from sender computers to
+    trusted computers. A primary feature to note is that files cannot be sent to
+    arbitrary computers, even on a local network. Trust is determined by the
+    users on both the sending and receiving side.
+
+                              Protocol Layering
+
+                             +-----------------+
+                             |   application   |
+                             +-----------------+
+                             |       SDDP      |
+                             +-----------------+
+                             |       UDP       |
+                             +-----------------+
+                             |internet protocol|
+                             +-----------------+
+
+                                  Figure 1
+
+    SDDP sits on top of UDP in order to maintain speed. SDDP packets are sent
+    over UDP and any applications that interact with SDDP should not see UDP.
+
+1.2. Interface
+
+    The SDDP interface consists of applications on one side and UDP on the other
+    side. In this way it is like an application layer protocol, however any
+    applications utilizing SDDP should not do so directly alongside UDP. Some
+    applications might take advantage of both, but they should not violate the
+    already in-place security and interface of SDDP.
+
+    The way that SDDP interfaces with UDP is not strictly defined but any
+    implementations should follow both the security and simplicity of the
+    defined interface.
+
+1.3. Operation
+
+    The SDDP is stateful and connection based which allows multiple connections
+    and complex operations. Any give SDDP must provide the following features:
+
+        Uni-directional file transfer
+        Encrypted headers
+        Simple data cipher
+        Missing packet retrieval
+        Simple flow control
+        High level trust system
+
+    The specifics of these features are described below.
+
+    Uni-directional file transfer:
+
+        An implementation of the SDDP must ensure the sender receiver model of
+        communication. This means that an instance of a sender and an instance
+        of a receiver on the same machine should be separate. They can exist,
+        and both talk to other machines, but they must be individual. This is
+        the only restriction on this feature. For more clear details see
+        sections 3 and 4.
+
+    Encrypted headers:
+
+        Security is achieved through a highly encrypted header and encrypted
+        data. The header should be encrypted using the desired receiver's public
+        key. This ensures that only the receiver can know what the cipher is as
+        well as the size, type, and nature of the data.
+
+    Simple data cypher:
+
+        The data encryption method of the SDDP must be fast, otherwise it would
+        undermine the purpose of its existence. The cipher should be something
+        non-trivial to decode to prevent easy data theft, but simple enough to
+        be performant.
+
+    Missing packet retrieval:
+
+        Keeping track of which packets are retrieved is essential to correctly
+        assembling data on the receiver side. This is solved by creating simple
+        headers to request missing packets. This is simple but can be more
+        complex with flow control.
+
+    Simple flow control:
+
+        The specification of simple flow control really means at least simple
+        flow control. Flow control is useful for advanced functionality. There
+        are no restrictions on how flow control is implemented or what it does
+        but here are some suggestions:
+
+	        Packet order shuffling
+            Wait headers to ensure smooth connections
+            Delays in packet sending
+
+        The SDDP transfers data in packets of a fixed size. This means that for
+        any given SDDP connection, the packets are the same size. This does not
+        mean that every connection has the same sized packets. Data files are
+        split into these packets when files are transferred. The sizes of the
+        packets when used with packet order shuffling provides an excellent
+        level of data obfuscation. Making very small packet sizes with random
+        shuffling makes it almost impossible to reconstruct data in a meaningful
+        way, especially when a good cipher is used.
+
+    High level trust system:
+
+        The SDDP relies on users sending data to places that actually want it.
+        This is hard for the sender and received to negotiate in a quick manner.
+        A system to determine if a connection should be established should be
+        implemented to ensure fast trust authentication. This will usually take
+        the form of high level decisions by the administrator of the receiver
+        client. More specifics are defined in sections 2.6 and 3.6.
+
+                                2. PHILOSOPHY
+
+2.1. Model of operation
+
+    The SDDP model of operation consists of a sender and receiver client. These
+    clients are stateful and connection based. Each sender and receiver client
+    can serve a single connection at a time. Behavior of multiple connections is
+    undefined in this document and is discouraged. Additionally the sender and
+    receiver model requires these two clients to be implicitly seperate from
+    eachother. A single program may operate with a sender and receiver, but they
+    must be different state machines and handle their own data.
+
+2.2. Sender
+
+    The SDDP sender client is responsible for sending files. This means that the
+    sender takes most of the burden in terms of encryption, tracking, and flow
+    control. This adds quite a bit of complexity to the sender client. 
+
+2.3. Receiver
+
+    The SDDP receiver client is responsible for receiving files. The primary
+    operation is receiving packets, and putting them together. Other operations
+    such as de-encryption and sorting is also required, but self explanatory.
+    The receiver does have a more complicated job, and that is maintaining
+    security. The model of operation dictates that the receiver must accept,
+    refuse, or block a connection. This decision is based on the trust system.
+
+2.4. Interface
+
+    The interface with the SDDP is implementation defined. Applications using
+    the SDDP must use an implementation that has some modular capabilities. This
+    is to prevent abuse of the model of operation where senders and receivers
+    work cannot work in tandem.
+
+2.5. Security
+
+    The security of the SDDP is one of the primary features. Security is
+    achieved through the trust system and high levels of encryption as stated
+    elsewhere in this document. The theory behind header encryption is that the
+    only machine able to decode the header, and thus interpret the data, is the
+    intended recipient. This method is directly linked to the trust system.
+
+2.6. Trust
+
+    The SDDP trust system is where a vast majority of the security and
+    complexity occurs. The trust system is predicated on an address book of
+    public-keys and some kind of machine indicator. The machine indicator is
+    intentionally not specified, as various implementations could use for
+    example: domain names, hostnames, public IP, and any other type of
+    identifier. The pairs are essential to determining if a received packet is
+    trustworthy. First of all the machine identifier is used to determine if the
+    sender is even in the address book. Additional levels of trust are required
+    for a given implementation, but the actual methodology is left vague. An
+    example could be a 10-level authentication system where all pairs in the
+    address book have a number assigned to them indicating trust. Certain
+    information in the header like files size or file type could be used to
+    resolve this trust value into an accept or refuse connection decision.
+
+2.7. Speed
+
+    Speed is a paramount feature of the SDDP. This is primarily achieved through
+    the underlying UDP interface, however other methods are used as well. For
+    example the very brief exchange of connection headers. Likewise the simple
+    data cipher allows for quick recovery of the sent data.
+
+2.8. Simplicity
+
+    Simplicity for the SDDP means that convoluted and intricate headers should
+    not exist. Implementations of the SDDP are allowed to create their own
+    pseudo commands and headers, but these should remain simple. The theory
+    behind this is that the simpler the connection, the more secure it can be.
+    Complexity introduces more room for faults and unintended behavior.
+
+                          3. FUNCTIONAL SPECIFICATION
+
+3.1. Header Format
+
+    SDDP Header Format
+
+       0               1               2               3
+       0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |                           Data Size                           |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |   Data Ext.   |   Data Type   |          Cipher key           |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |           Checksum            | Total Packets | Packet Number |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+                              SDDP Header Format
+
+                                  Figure 2.
+
+    Data Size:  32 bits
+
+        Total size in bytes of data being sent.
+
+    Data Ext.:  8 bits
+
+        Data Length Extension, binary value appended to data size to increase
+        max data size to 1 terabyte. Field is 0 if size is under 2^32 bytes.
+
+    Data Type:  8 bits
+
+        Data file type. Similar to MIME type.
+
+    Cipher key:  16 bits
+
+        The cipher key is used to decrypt the data. The cypher is different for
+        every packet sent
+
+    Checksum:  16 bits
+
+        Checksum is the 16 bit one's complement of the one's complement sum of
+        all the bytes in the data section of the packet. This is similar to the
+        TCP checksum, but could be altered to include the header or the altered
+        cipher data in certain implementations where more security is required.
+
+    Total Packets:  8 bits
+
+        Total number of packets to be sent before data is complete.
+
+    Packet Number:  8 bits
+
+        Current packet number. This allows the receiver to piece packets
+        together in order and request missing packets.
+
+3.2. Special Headers
+
+    SDDP uses special packets to begin connections, confirm connections, and
+    request missing data. The packets are special in that they don't contain any
+    additional data. The headers are simply defined as follows.
+
+    3.2.1. Request for send
+
+        Request for send headers contain data size, data ext., data type, and
+        total packets. The checksum field is irrelevant and therefore ignored.
+        The key feature of these packets is the packet number being equal to 0.
+
+    3.2.2. Confirmation
+
+	Confirmation packets are identical to Request for send packets.
+
+    3.2.3. Request for lost
+
+        Request for lost headers are identical to request for send headers
+        with the packet number equal to the number of a missing packet.
+
+    3.2.4. Done transmitting
+
+        Done transmitting headers tell the receiver that the sender has finished
+        transmitting the file packets and is ready to receive request for lost
+        headers or a done transmitting packet. These packets are special because
+        the total packets field is set to 0.
+
+    The specific implementation of SDDP can add other headers with special
+    values. It should be noted that other implementations might refuse
+    connection upon receiving these headers.
+
+3.3. Connecting
+
+    Resolving a connection is very similar to a TCP handshake, though simpler.
+    The first part of connecting requires the sender to deliver a request for
+    send packet. Due to the underlying UDP, the packets might not reach their
+    destination. This is fine however, as the sender can send another request
+    for send after a given amount of time. Connection timeouts are highly
+    recommended so that the sender doesn't get stuck repeatedly sending packets
+    into the void. Once the receiver has gotten the request for send packet it
+    will either accept or reject the packet.
+
+    Accepting the packet looks like a confirmation header. This header is
+    identical to the request for send header, but it is encrypted with the
+    senders public key rather than the receivers. This allows only the sender to
+    implicitly accept the connection.
+
+3.4. Rejection
+
+    Rejection of connections is a simple task. The decision is left for the
+    trust factors section. The SDDP rejects connections by simply returning the
+    confirmation header to the sender with the packet number equal to any
+    negative value. This value could actually indicate the reason for refusal,
+    but this is not required.
+
+3.5. Blocking
+
+    Blocking connections is important to prevent malicious actors and generally
+    unwanted connections. Blocking decisions are not specified in this document,
+    but some blocking is required. Blocking can look like refusing a connection
+    after multiple failed confirmation packets. Usually blocking decisions will
+    be made by immediately blocking a connection from a sender not in the
+    addressbook.
+
+3.6. Trust factors
+
+    As defined above the trust factors are implementation specific. This being
+    said, trust factors are required. At a basic level trust factors consist of
+    a public-key machine identifier pair address book. This is defined in
+    section 2.6. 
+
+3.7. Getting lost packets
+
+    The process for requesting lost packets is very simple. The receiver client
+    keeps track of all received packets based on the total packet value
+    contained in the header. When the sender is finished sending its packets, it
+    will send a done transmitting header. Upon receiving this the receiver will
+    look for any missing packets and send a request for lost header to the
+    receiver. The sender will then dispatch the lost packet as normal. The
+    sender will remain in this state until another request for lost packet is
+    received or the done transmitting packet is received, indicating the
+    receiver has successfully created the data file.
+
+3.8. File construction
+
+    File construction can be done in many different ways. The actual method is
+    not specified but it is highly recommended that files are constructed as
+    packets are received. This method is implemented in section 4.
+
+                           4. A BASIC IMPLEMENTATION
