@@ -1,13 +1,16 @@
-#include <stdbool.h>
+#include <stdio.h>
 #include <stdint.h>
+#include "bitmap.h"
 
 #define uint unsigned int
 
-// typedef enum STATE {};
-// typedef enum TRUST {};
+typedef enum {} STATE;
+typedef enum {} TRUST;
 
 typedef struct sender {
-    // STATE state;
+    STATE state;
+    FILE *current;
+
 } SENDER_T;
 
 typedef struct header{
@@ -15,13 +18,13 @@ typedef struct header{
     uint8_t size_ext;
     uint8_t data_type;
     uint16_t cipher_key;
-    uint16_t cipher_key;
+    uint16_t checksum;
     uint8_t total_packets;
     uint8_t packet_number;
 } HEADER;
 
 typedef struct address {
-    // TRUST trust;
+    TRUST trust;
     char *hostname;
     uint address;
     uint key;
@@ -33,10 +36,10 @@ typedef struct AddressBook {
 } ADDRESSBOOK_T;
 
 typedef struct receiver{
-    // STATE state;
+    STATE state;
 
     // Packet info
-    bool *packets;  // List of packets
+    bitmap_t packets;  // List of packets
                     // Total size = N_packets_T
                     // 1: Received packet
                     // 0: Missing packet
@@ -46,11 +49,13 @@ typedef struct receiver{
 
 } RECEIVER_T;
 
-// create_header();
+void create_header();
 // gen_cipher();
 // cipher();
 // get_addressbook();
 // read_file();
 // reject();
 // block();
+// unblock();
 // checksum();
+// find_address();
