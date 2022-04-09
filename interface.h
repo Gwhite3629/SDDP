@@ -54,3 +54,4 @@ typedef struct receiver{
 // reject();
 // block();
 // checksum();
+// shuffle();
