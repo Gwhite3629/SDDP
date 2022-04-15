@@ -237,7 +237,7 @@ oriented and highly trust based.
       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
       |                           Data Size                           |
       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-      |   Data Ext.   |   Data Type   |          Cipher key           |
+      |   Data Ext.   |     MISC      |          Cipher key           |
       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
       |           Checksum            | Total Packets | Packet Number |
       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -255,9 +255,9 @@ oriented and highly trust based.
         Data Length Extension, binary value appended to data size to increase
         max data size to 1 terabyte. Field is 0 if size is under 2^32 bytes.
 
-    Data Type:  8 bits
+    MISC:  8 bits
 
-        Data file type. Similar to MIME type.
+        Optional field, implementation specific
 
     Cipher key:  16 bits
 
@@ -310,7 +310,8 @@ oriented and highly trust based.
 
     The specific implementation of SDDP can add other headers with special
     values. It should be noted that other implementations might refuse
-    connection upon receiving these headers.
+    connection upon receiving these headers. It is recommended to make a packet
+    send the filename.
 
 3.3. Connecting
 
