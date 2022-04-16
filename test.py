@@ -36,6 +36,10 @@ def main():
 
     print(S.received)
 
+    S.create_frames()
+
+    print(S.frames[20])
+
 
 if __name__ == "__main__":
     main()

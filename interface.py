@@ -7,6 +7,14 @@ from pkg_resources import ResolutionError
 import rsa
 import os
 
+rol = lambda val, r_bits, max_bits: \
+    (val << r_bits%max_bits) & (2**max_bits-1) | \
+    ((val & (2**max_bits-1)) >> (max_bits-(r_bits%max_bits)))
+
+ror = lambda val, r_bits, max_bits: \
+    ((val & (2**max_bits-1)) >> r_bits%max_bits) | \
+    (val << (max_bits-(r_bits%max_bits)) & (2**max_bits-1))
+
 class Sender(object):
     def __init__(self,current_address):
         self.Address = Address_book('addressbook.txt')
@@ -218,6 +226,10 @@ class Receiver(object):
     def __init__(self):
         self.Address = Address_book('addressbook.txt')
         self.headers = list()
+        self.headers_e = list()
+        self.frames = list()
+        self.packets = list()
+        self.received = 0
         return
     
     def checksum(self,packet):
@@ -241,10 +253,13 @@ class Receiver(object):
     def unblock():
         return
 
+    def split_frame():
+        return
+
     def decrypt_header(self, num):
         return
 
-    def decrypt_data():
+    def resolve_host():
         return
 
     def resolve_trust():
@@ -252,3 +267,23 @@ class Receiver(object):
     
     def set_trust(self):
         return
+
+def RC5_setup(k):
+
+    return S
+
+def RC5_decrypt(S, A, B):
+    A = A + S[0]
+    B = B + S[1]
+    for i in range(1,13):
+        A = rol((A ^ B), B, 32) + S[2*i]
+        B = rol((B ^ A), A, 32) + S[2*i+1]
+    return A, B
+
+def RC5_encrypt(S, A, B):
+    for i in range(12,0):
+        B = rol(B - S[2*i+1], A, 32) ^ A
+        A = rol(A - S[2*i], B, 32) ^ B
+    B = B = S[1] 
+    A = A - S[0]
+    return A, B
