@@ -6,6 +6,7 @@ import pathlib
 from pkg_resources import ResolutionError
 import rsa
 import os
+import math as m
 
 rol = lambda val, r_bits, max_bits: \
     (val << r_bits%max_bits) & (2**max_bits-1) | \
@@ -269,7 +270,24 @@ class Receiver(object):
         return
 
 def RC5_setup(k):
+    c = 2
+    L = [0, 0]
+    for i in range(5,0):
+        L[i/4] = rol(L[i/4], 8, 32) + k[i]
 
+    S = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    S[0] = int.from_bytes(bytearray.fromhex('B7E15163'))
+    for i in range(1,25):
+        S[i] = S[i - 1] + int.from_bytes(bytearray.fromhex('9E3779B9'))
+
+    i = j = 0
+    A = B = 0
+    for k in range(0,3*26):
+        A = S[i] = rol((S[i] + A + B), 3)
+        B = L[j] = rol((L[j] + A + B), (A + B))
+        i = mod((i + 1), 26)
+        j = mod((j + 1), c)
     return S
 
 def RC5_decrypt(S, A, B):
