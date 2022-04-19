@@ -7,6 +7,8 @@ from pkg_resources import ResolutionError
 import rsa
 import os
 import math as m
+import string
+import random
 
 rol = lambda val, r_bits, max_bits: \
     (val << r_bits%max_bits) & (2**max_bits-1) | \
@@ -15,6 +17,9 @@ rol = lambda val, r_bits, max_bits: \
 ror = lambda val, r_bits, max_bits: \
     ((val & (2**max_bits-1)) >> r_bits%max_bits) | \
     (val << (max_bits-(r_bits%max_bits)) & (2**max_bits-1))
+
+def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
+    return ''.join(random.choice(chars) for _ in range(size))
 
 class Sender(object):
     def __init__(self,current_address):
@@ -25,12 +30,13 @@ class Sender(object):
         self.checksums = list()
         self.cipher_keys = list()
         self.frames = list()
+        self.packets_e = list()
         self.current_address = current_address
         return
 
     def create_frames(self):
         for i in range(0,self.total_packets):
-            self.frames.append(b''.join([self.header_e[i],self.packets[i]]))
+            self.frames.append(b''.join([self.header_e[i],self.packets_e[i]]))
 
     def create_headers(self):
         for i in range(0,self.total_packets):
@@ -66,13 +72,27 @@ class Sender(object):
     def decrypt_header(self, num):
         received = Header.decrypt(self.headers[0],self.header_e[num],self.Address.private)
         self.received = Header(
-            (received >> 64) & (pow(2,32) - 1),
-            (received >> 56) & 255,
-            (received >> 48) & 255,
-            (received >> 32) & 65525,
+            (received >> 96) & (pow(2,32) - 1),
+            (received >> 88) & 255,
+            (received >> 80) & 255,
+            (received >> 32) & (pow(2,48) - 1),
             (received >> 16) & 65535,
             (received >> 8) & 255,
             received & 255)
+
+    def decrypt_data(self, num):
+        self.decrypt_header(num)
+        S = RC5_setup(self.received.cipher_key)
+        k = 0
+        P = list()
+        for j in range(0,int(476/64)):
+            A = int.from_bytes(self.packets_e[num][4*k:4*(k+1)],'little')
+            B = int.from_bytes(self.packets_e[num][4*(k+1):4*(k+2)],'little')
+            (A, B) = RC5_decrypt(S, A, B)
+            p = b''.join([((A + 2**32) & (2**32 - 1)).to_bytes(4,'little'),((B + 2**32) & (2**32 - 1)).to_bytes(4,'little')])
+            P.append(p)
+            k = k + 2
+        self.decrypted_packet = b''.join(P)
 
     def create_checksums(self):
         for i in range(0,self.total_packets):
@@ -104,13 +124,29 @@ class Sender(object):
         self.create_checksums()
         self.create_ciphers()
         self.create_headers()
-
+        self.cipher_packets()
+        self.create_frames()
         return
 
     def gen_cipher(self):
-        return 1
+        k = id_generator()
+        k = k.encode('utf8')
+        return int.from_bytes(bytearray(k),'little')
 
-    def cipher():
+    def cipher_packets(self):
+        for i in range(0,self.total_packets):
+            S = RC5_setup(self.cipher_keys[i])
+            k = 0
+            P = list()
+            for j in range(0,int(476/64)):
+                A = int.from_bytes(self.packets[i][4*k:4*(k+1)],'little')
+                B = int.from_bytes(self.packets[i][4*(k+1):4*(k+2)],'little')
+                (A, B) = RC5_encrypt(S, A, B)
+                #p = b''.join([A, B])
+                p = b''.join([((A + 2**32) & (2**32 - 1)).to_bytes(4,'little'),((B + 2**32) & (2**32 - 1)).to_bytes(4,'little')])
+                P.append(p)
+                k = k + 2
+            self.packets_e.append(b''.join(P))
         return
 
 class Address_book(object):
@@ -206,19 +242,20 @@ class Header(object):
         self.total_packets = total_packets
         self.packet_number = packet_number
         self.Field_1 = size & (pow(2,32)-1)
-        self.Field_2 = ((size_ext & 255) << 24) + ((misc & 255) << 16) + (cipher_key & 65535)
-        self.Field_3 = ((checksum & 65535) << 16) + ((total_packets & 255) << 8) + (packet_number & 255)
-        self.header = (self.Field_1 << 64) + (self.Field_2 << 32) + (self.Field_3)
+        self.Field_2 = ((size_ext & 255) << 24) + ((misc & 255) << 16) + ((cipher_key >> 32) & 65535)
+        self.Field_3 = cipher_key & (pow(2,32)-1)
+        self.Field_4 = ((checksum & 65535) << 16) + ((total_packets & 255) << 8) + (packet_number & 255)
+        self.header = (self.Field_1 << 96) + (self.Field_2 << 64) + (self.Field_3 << 32) + (self.Field_4)
 
     def __str__(self):
         string = f'{self.size}\n{self.size_ext},{self.misc},{self.cipher_key}\n{self.checksum},{self.total_packets},{self.packet_number}\n'
-        return f'{string}\n{hex(self.Field_1)}\n{hex(self.Field_2)}\n{hex(self.Field_3)}\n{hex(self.header)}\n'
+        return f'{string}\n{hex(self.Field_1)}\n{hex(self.Field_2)}\n{hex(self.Field_3)}\n{hex(self.Field_4)}\n{hex(self.header)}\n'
 
     def __getitem__(self):
         return self.header
 
     def encrypt(self,Key):
-        return rsa.encrypt(self.header.to_bytes(12,'little'),Key)
+        return rsa.encrypt(self.header.to_bytes(16,'little'),Key)
 
     def decrypt(self,header_e,Key):
         return int.from_bytes(rsa.decrypt(header_e,Key),'little')
@@ -277,17 +314,19 @@ def RC5_setup(k):
 
     S = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-    S[0] = int.from_bytes(bytearray.fromhex('B7E15163'))
+    S[0] = int.from_bytes(bytearray.fromhex('B7E15163'),'little')
     for i in range(1,25):
-        S[i] = S[i - 1] + int.from_bytes(bytearray.fromhex('9E3779B9'))
+        S[i] = S[i - 1] + int.from_bytes(bytearray.fromhex('9E3779B9'),'little')
 
     i = j = 0
     A = B = 0
     for k in range(0,3*26):
-        A = S[i] = rol((S[i] + A + B), 3)
-        B = L[j] = rol((L[j] + A + B), (A + B))
+        A = S[i] = rol((S[i] + A + B), 3, 32)
+        B = L[j] = rol((L[j] + A + B), (A + B), 32)
         i = mod((i + 1), 26)
         j = mod((j + 1), c)
+    #for i in range(0,len(S)):
+        #S[i] = (S[i] + 2**32) & (2**32 - 1)
     return S
 
 def RC5_decrypt(S, A, B):
@@ -302,6 +341,6 @@ def RC5_encrypt(S, A, B):
     for i in range(12,0):
         B = rol(B - S[2*i+1], A, 32) ^ A
         A = rol(A - S[2*i], B, 32) ^ B
-    B = B = S[1] 
+    B = B - S[1]
     A = A - S[0]
     return A, B

@@ -14,32 +14,33 @@ def main():
     #A = Address_book('addressbook.txt')
     #print(A)
 
-    H = Header(1234,0,3,32456,32457,64,2)
+    #H = Header(1234,0,3,32456,32457,64,2)
 
-    E = H.encrypt(R.Address.public)
+    #E = H.encrypt(R.Address.public)
 
-    print(E)
+    #print(E)
 
-    U = H.decrypt(E,R.Address.private)
+    #U = H.decrypt(E,R.Address.private)
 
-    print(U)
+    #print(U)
 
-    print(H)
+    #print(H)
 
     S = Sender('192.168.1.1')
 
     S.read_file('README')
 
-    print(S.header_e[20])
+    #print(S.header_e[20])
 
     S.decrypt_header(20)
 
     print(S.received)
 
-    S.create_frames()
+    S.decrypt_data(20)
 
-    print(S.frames[20])
+    print(S.packets[20].decode('utf8'))
 
+    print(S.decrypted_packet.decode('utf8'))
 
 if __name__ == "__main__":
     main()
