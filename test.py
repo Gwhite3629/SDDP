@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 import math
-from interface import Address_book, Receiver, Header, Sender
+from interface import Address_book, RC5_decrypt, RC5_encrypt, RC5_setup, Receiver, Header, Sender, id_generator
 import gc
 from rsa import common
 
@@ -36,11 +36,18 @@ def main():
 
     print(S.received)
 
-    S.decrypt_data(20)
+    k = id_generator()
+    k = k.encode('utf8')
+    S = RC5_setup(k)
 
-    print(S.packets[20].decode('utf8'))
+    (A, B) = RC5_encrypt(S, 3, 3)
+    print(RC5_decrypt(S, A, B))
 
-    print(S.decrypted_packet.decode('utf8'))
+    #S.decrypt_data(20)
+
+    #print(S.packets[20])
+
+    #print(S.decrypted_packet)
 
 if __name__ == "__main__":
     main()

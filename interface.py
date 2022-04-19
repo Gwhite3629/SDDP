@@ -138,7 +138,7 @@ class Sender(object):
             S = RC5_setup(self.cipher_keys[i])
             k = 0
             P = list()
-            for j in range(0,int(476/64)):
+            for j in range(0,476//64):
                 A = int.from_bytes(self.packets[i][4*k:4*(k+1)],'little')
                 B = int.from_bytes(self.packets[i][4*(k+1):4*(k+2)],'little')
                 (A, B) = RC5_encrypt(S, A, B)
@@ -310,7 +310,7 @@ def RC5_setup(k):
     c = 2
     L = [0, 0]
     for i in range(5,0):
-        L[i/4] = rol(L[i/4], 8, 32) + k[i]
+        L[i//4] = rol(L[i//4], 8, 32) + k[i]
 
     S = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
@@ -325,8 +325,8 @@ def RC5_setup(k):
         B = L[j] = rol((L[j] + A + B), (A + B), 32)
         i = mod((i + 1), 26)
         j = mod((j + 1), c)
-    #for i in range(0,len(S)):
-        #S[i] = (S[i] + 2**32) & (2**32 - 1)
+    for i in range(0,len(S)):
+        S[i] = (S[i] + 2**32) & (2**32 - 1)
     return S
 
 def RC5_decrypt(S, A, B):
