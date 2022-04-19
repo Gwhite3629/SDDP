@@ -6,11 +6,11 @@ import gc
 from rsa import common
 
 def main():
-    R = Receiver()
+    #R = Receiver()
     #print(R.Address)
-    R.Address['192.168.7.2'] = ('3','Random','key')
+    #R.Address['192.168.7.2'] = ('3','Random','key')
     #print(R.Address)
-    R.Address.write_book()
+    #R.Address.write_book()
     #A = Address_book('addressbook.txt')
     #print(A)
 
@@ -30,24 +30,19 @@ def main():
 
     S.read_file('README')
 
-    #print(S.header_e[20])
+    print(S.header_e[20])
 
     S.decrypt_header(20)
 
     print(S.received)
 
-    k = id_generator()
-    k = k.encode('utf8')
-    S = RC5_setup(k)
+    S.decrypt_data(20)
 
-    (A, B) = RC5_encrypt(S, 3, 3)
-    print(RC5_decrypt(S, A, B))
+    print(S.packets[20].decode('utf8'))
 
-    #S.decrypt_data(20)
+    print(S.decrypted_packet.decode('utf8'))
 
-    #print(S.packets[20])
-
-    #print(S.decrypted_packet)
+    print(len(S.frames[20]))
 
 if __name__ == "__main__":
     main()

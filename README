@@ -239,8 +239,12 @@ oriented and highly trust based.
       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
       |   Data Ext.   |     MISC      |          Cipher key           |
       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-      |           Checksum            | Total Packets | Packet Number |
+      |                        Cipher key Ext.                        |
       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |           Checksum            |         Total Packets         |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+      |         Packet Number         |
+      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
                               SDDP Header Format
 
@@ -259,10 +263,10 @@ oriented and highly trust based.
 
         Optional field, implementation specific
 
-    Cipher key:  16 bits
+    Cipher key:  16 bits + 32 bits Ext.
 
         The cipher key is used to decrypt the data. The cypher is different for
-        every packet sent
+        every packet sent. The cipher key is intended to be 6 bytes in length
 
     Checksum:  16 bits
 
