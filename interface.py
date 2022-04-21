@@ -3,6 +3,7 @@
 from genericpath import exists
 from operator import mod
 import pathlib
+from tkinter import FALSE, TRUE
 from pkg_resources import ResolutionError
 import rsa
 import os
@@ -267,11 +268,13 @@ class Header(object):
 class Receiver(object):
     def __init__(self):
         self.Address = Address_book('addressbook.txt')
-        self.headers = list()
-        self.headers_e = list()
+        self.headers = dict()
+        self.header_e = list()
         self.frames = list()
-        self.packets = list()
+        self.packets_e = list()
+        self.packets = dict()
         self.received = 0
+        self.client = ""
         return
     
     def checksum(self,packet):
@@ -280,7 +283,25 @@ class Receiver(object):
             sum = sum + ~packet[i]
         return ~(sum & 15)
 
+    def verify_checksum(self, num):
+        r = self.checksum(self.packets[num])
+        if (r == self.headers[num].checksum):
+            b = TRUE
+        else:
+            b = FALSE
+        return b
+
     def connect(self):
+        h = Header(0,0,0,0,0,0,0)
+        # Template header
+        # Filename
+        return
+
+    def write_data(self):
+
+        return
+
+    def handshake(self):
         return
 
     def close(self):
@@ -289,17 +310,41 @@ class Receiver(object):
     def reject():
         return
 
-    def block():
+    def block(self):
+        self.Address.Book[self.client] = (0, "Unknown", "nokey.txt")
         return
 
-    def unblock():
+    def unblock(self):
         return
 
-    def split_frame():
-        return
+    def split_frame(self, num):
+        self.header_e.append(self.frames[num][0:32])
+        self.packets_e.append(self.frames[num][32:-1])
 
     def decrypt_header(self, num):
-        return
+        received = Header.decrypt(self.header_t,self.header_e[num],self.Address.private)
+        self.received.append(Header(
+            (received >> 112) & (pow(2,32) - 1),
+            (received >> 104) & 255,
+            (received >> 96) & 255,
+            (received >> 48) & (pow(2,48) - 1),
+            (received >> 32) & 65535,
+            (received >> 16) & 65535,
+            received & 65535))
+
+    def decrypt_data(self, num):
+        k = self.headers[num].cipher_key.to_bytes(6, 'little')
+        S = RC5_setup(k)
+        k = 0
+        P = list()
+        for j in range(0,448//8+1):
+            A = int.from_bytes(self.packets_e[num][(4*k):(4*(k+1))],'little')
+            B = int.from_bytes(self.packets_e[num][(4*(k+1)):(4*(k+2))],'little')
+            (A, B) = RC5_decrypt(S, A, B)
+            p = b''.join([A.to_bytes(4,'little'),B.to_bytes(4,'little')])
+            P.append(p)
+            k = k + 2
+        self.packets[num] = b''.join(P)
 
     def resolve_host():
         return
