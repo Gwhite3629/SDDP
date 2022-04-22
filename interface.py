@@ -10,6 +10,10 @@ import os
 import math as m
 import string
 import random
+import socket
+
+port = 8333
+size = 488
 
 rol = lambda val, r_bits, max_bits: \
     (val << r_bits%max_bits) & (2**max_bits-1) | \
@@ -23,7 +27,7 @@ def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
     return ''.join(random.choice(chars) for _ in range(size))
 
 class Sender(object):
-    def __init__(self,current_address):
+    def __init__(self):
         self.Address = Address_book('addressbook.txt')
         self.headers = list()
         self.header_e = list()
@@ -32,7 +36,12 @@ class Sender(object):
         self.cipher_keys = list()
         self.frames = list()
         self.packets_e = list()
-        self.current_address = current_address
+        self.sock = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
+        return
+
+    def connect(self, address):
+        self.current_address = address
+        self.sock.sendto(self.header_t,self.current_address)
         return
 
     def create_frames(self):
