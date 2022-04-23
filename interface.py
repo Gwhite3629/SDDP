@@ -37,12 +37,40 @@ class Sender(object):
         self.frames = list()
         self.packets_e = list()
         self.sock = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
+        self.state = State()
         return
 
     def connect(self, address):
         self.current_address = address
         self.sock.sendto(self.header_t,self.current_address)
+        (ret, addr) = self.sock.recvfrom(32)
+        if (addr != address):
+            return "Failed"
+        received = Header.decrypt(self.header_t,ret,self.Address.private)
+        self.received = Header(
+            (received >> 112) & (pow(2,32) - 1),
+            (received >> 104) & 255,
+            (received >> 96) & 255,
+            (received >> 48) & (pow(2,48) - 1),
+            (received >> 32) & 65535,
+            (received >> 16) & 65535,
+            received & 65535)
+        if (self.received != self.header_t):
+            return "Failed"
+        self.State = "Connected"
         return
+
+    def send_frame(self, num):
+        self.sock.sendto(self.frames[num], (self.current_address, port))
+
+    def done(self, address):
+        d = Header(self.size,0,0,0,0,0,0)
+        h = Header.encrypt(d, 
+                self.Address.getkey(
+                    self.Address[self.current_address][2]
+                ))
+        self.sock.sendto(h, self.current_address)
+        self.state = "Waiting"
 
     def create_frames(self):
         for i in range(0,self.total_packets):
@@ -235,7 +263,7 @@ class Address_book(object):
 
 class State(object):
     def __init__(self):
-        self.State = 0
+        self.State = "Not connected"
 
     def __getitem__(self, State):
         return self.State
@@ -268,6 +296,9 @@ class Header(object):
     def __getitem__(self):
         return self.header
 
+    def __eq__(self, other):
+        return ((self.header) == (other.header))
+
     def encrypt(self,Key):
         return rsa.encrypt(self.header.to_bytes(16,'little'),Key)
 
@@ -284,6 +315,8 @@ class Receiver(object):
         self.packets = dict()
         self.received = 0
         self.client = ""
+        self.sock = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
+        self.state = State()
         return
     
     def checksum(self,packet):
@@ -303,14 +336,50 @@ class Receiver(object):
     def connect(self):
         h = Header(0,0,0,0,0,0,0)
         # Template header
+        (m, addr1) = self.sock.recvfrom(32)
+        self.header_t = Header.decrypt(h, m, self.Address.private)
+        self.total_packets = self.header_t.total_packets
+        r = Header.encrypt(self.header_t, 
+                self.Address.getkey(
+                    self.Address[addr1][2]
+                ))
+        self.sock.sendto(r, (addr1, port))
         # Filename
-        return
+        (m, addr2) = self.sock.recvfrom(32+self.header_t.size_ext)
+        if (addr1 != addr2):
+            return "Failed"
+        self.current_addr = addr2
+        h = Header.decrypt(h, m[0:32], self.Address.private)
+        self.filename = self.decrypt_frame(h.cipher_key, m[32:-1])
+        self.state = "Receiving"
+
+    def receive_packet(self):
+        (m, addr) = self.sock.recvfrom(size)
+        if (addr != self.current_addr):
+            return "Failed"
+        self.frames.append(m)
+        self.split_frame(-1)
+        num = self.decrypt_header(-1)
+        self.decrypt_data(-1, num)
+
+    def get_lost(self, num):
+        H = Header(
+            self.header_t.size,
+            self.header_t.size_ext,
+            self.header_t.misc,
+            self.header_t.cipher_key,
+            self.header_t.checksum,
+            self.header_t.total_packets,
+            num)
+        m = H.encrypt(
+                self.Address.getkey(
+                    self.Address[self.current_addr][2]
+                ))
+        self.sock.sendto(m, self.current_addr)
+        self.receive_packet()
 
     def write_data(self):
 
-        return
-
-    def handshake(self):
         return
 
     def close(self):
@@ -332,31 +401,44 @@ class Receiver(object):
 
     def decrypt_header(self, num):
         received = Header.decrypt(self.header_t,self.header_e[num],self.Address.private)
-        self.received.append(Header(
+        r = Header(
             (received >> 112) & (pow(2,32) - 1),
             (received >> 104) & 255,
             (received >> 96) & 255,
             (received >> 48) & (pow(2,48) - 1),
             (received >> 32) & 65535,
             (received >> 16) & 65535,
-            received & 65535))
+            received & 65535)
+        self.headers[r.packet_number] = r
+        return r.packet_number
 
-    def decrypt_data(self, num):
-        k = self.headers[num].cipher_key.to_bytes(6, 'little')
+    def decrypt_frame(self, key, data):
+        k = key.to_bytes(6, 'little')
         S = RC5_setup(k)
         k = 0
         P = list()
-        for j in range(0,448//8+1):
-            A = int.from_bytes(self.packets_e[num][(4*k):(4*(k+1))],'little')
-            B = int.from_bytes(self.packets_e[num][(4*(k+1)):(4*(k+2))],'little')
+        for j in range(0,size(data)//8+1):
+            A = int.from_bytes(data[(4*k):(4*(k+1))],'little')
+            B = int.from_bytes(data[(4*(k+1)):(4*(k+2))],'little')
             (A, B) = RC5_decrypt(S, A, B)
             p = b''.join([A.to_bytes(4,'little'),B.to_bytes(4,'little')])
             P.append(p)
             k = k + 2
-        self.packets[num] = b''.join(P)
+        return b''.join(P)
 
-    def resolve_host():
-        return
+    def decrypt_data(self, e_num, o_num):
+        k = self.headers[o_num].cipher_key.to_bytes(6, 'little')
+        S = RC5_setup(k)
+        k = 0
+        P = list()
+        for j in range(0,448//8+1):
+            A = int.from_bytes(self.packets_e[e_num][(4*k):(4*(k+1))],'little')
+            B = int.from_bytes(self.packets_e[e_num][(4*(k+1)):(4*(k+2))],'little')
+            (A, B) = RC5_decrypt(S, A, B)
+            p = b''.join([A.to_bytes(4,'little'),B.to_bytes(4,'little')])
+            P.append(p)
+            k = k + 2
+        self.packets[o_num] = b''.join(P)
 
     def resolve_trust():
         return
