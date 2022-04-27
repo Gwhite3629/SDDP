@@ -465,8 +465,7 @@ def RC5_setup(k: bytes):
         B = L[j] = mod(rol((L[j] + A + B), (A + B), 32),2**32)
         i = mod((i + 1), 26)
         j = mod((j + 1), c)
-    #for i in range(0,len(S)):
-    #    S[i] = (S[i] + 2**32) & (2**32 - 1)
+
     return S
 
 def RC5_decrypt(S, A, B):
