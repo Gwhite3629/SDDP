@@ -27,8 +27,9 @@ def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
     return ''.join(random.choice(chars) for _ in range(size))
 
 class Sender(object):
-    def __init__(self):
+    def __init__(self, target_address):
         self.Address = Address_book('addressbook.txt')
+        self.current_address = target_address
         self.headers = list()
         self.header_e = list()
         self.packets = list()
@@ -73,8 +74,9 @@ class Sender(object):
         self.state = "Waiting"
 
     def create_frames(self):
+        print("CREATE FRAMES")
         for i in range(0,self.total_packets):
-            print(len(self.header_e[i]),len(self.packets_e[i]))
+            print(f"Frame {i}: {len(self.header_e[i]),len(self.packets_e[i])}")
             self.frames.append(b''.join([self.header_e[i],self.packets_e[i]]))
 
     def create_headers(self):
@@ -290,8 +292,8 @@ class Header(object):
         self.header = (self.Field_1 << 112) + (self.Field_2 << 80) + (self.Field_3 << 48) + (self.Field_4 << 16) + self.Field_5
 
     def __str__(self):
-        string = f'{self.size}\n{self.size_ext},{self.misc},{self.cipher_key}\n{self.checksum},{self.total_packets},{self.packet_number}\n'
-        return f'{string}\n{hex(self.Field_1)}\n{hex(self.Field_2)}\n{hex(self.Field_3)}\n{hex(self.Field_4)}\n{hex(self.Field_5)}\n{hex(self.header)}\n'
+        string = f'Size:{self.size}\nExtended Size: {self.size_ext}\nOptional Data:{self.misc}\nCipher Key: {self.cipher_key}\nChecksum: {self.checksum}\nTotal Packets: {self.total_packets}\nPacket Number:  {self.packet_number}\n'
+        return f'{string}\nHEX DUMP:\n{hex(self.Field_1)}\n{hex(self.Field_2)}\n{hex(self.Field_3)}\n{hex(self.Field_4)}\n{hex(self.Field_5)}\n{hex(self.header)}\n'
 
     def __getitem__(self):
         return self.header

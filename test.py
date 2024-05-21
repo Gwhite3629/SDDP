@@ -30,18 +30,23 @@ def main():
 
     S.read_file('README')
 
+    print("Encrpted header")
     print(S.header_e[20])
 
     S.decrypt_header(20)
 
+    print("SELF ENCRYPTED HEADER")
     print(S.received)
 
     S.decrypt_data(20)
 
+    print("SELF DECODED PACKETS")
     print(S.packets[20].decode('utf8'))
 
+    print("SELF DECRYPRED PACKETS")
     print(S.decrypted_packet.decode('utf8'))
 
+    print("Length of frames")
     print(len(S.frames[20]))
 
 if __name__ == "__main__":
